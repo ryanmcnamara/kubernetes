@@ -1,0 +1,67 @@
+machine:
+    environment:
+        GODIST: "go1.9.1.linux-amd64.tar.gz"
+        GOPATH: "$HOME/.go_workspace"
+        IMPORT_PATH: "k8s.io/kubernetes"
+        GO_PROJECT_SRC_PATH: "$GOPATH/src/$IMPORT_PATH"
+        TERM: dumb
+    services:
+        - docker
+    pre:
+        - wget -qO- https://artifactory.palantir.build/artifactory/internal-dist-contributions/docker/docker-engine/docker-1.11.2.tgz | sudo tar xvz -C /
+        - sudo cp /docker/* /usr/local/bin/.
+        - sudo cp /docker/* /usr/bin/.
+        - sudo wget -O /usr/local/bin/docker-compose 'https://artifactory.palantir.build/artifactory/internal-dist-contributions/docker/docker-compose/1.7.1/docker-compose-Linux-x86_64'
+        - sudo chmod 0755 /usr/local/bin/docker* /usr/local/bin/docker-compose
+        - |
+            sudo sed -i 's/deb http/deb [arch=amd64] http/' /etc/apt/sources.list.d/google-chrome.list && \
+            sudo apt-key adv --keyserver keyserver.ubuntu.com --recv-keys 1397BC53640DB551 && \
+            sudo apt-get update -y && \
+            sudo apt-get install -y gem rpm ruby && \
+            gem install fpm
+    post:
+        - mkdir -p download
+        - test -e download/$GODIST || wget -O download/$GODIST https://artifactory.palantir.build/artifactory/external-dist-golang/$GODIST
+        - sudo rm -rf /usr/local/go && sudo tar -C /usr/local -xzf download/$GODIST
+
+checkout:
+  post:
+    # ensure all tags are fetched and up-to-date
+    - git tag -l | xargs git tag -d && git fetch -t
+
+dependencies:
+  override:
+    - mkdir -p "$GOPATH/src/$IMPORT_PATH"
+    - rsync -az --delete ./ "$GOPATH/src/$IMPORT_PATH/"
+    - go get github.com/kardianos/govendor
+  cache_directories:
+    - ~/download
+
+test:
+  pre:
+    - go version
+  override:
+    - cd "$GO_PROJECT_SRC_PATH" && make palantir-build
+  #post:
+    #- cp -r -v "$GO_PROJECT_SRC_PATH"/_output/release-tars/* "$GO_PROJECT_SRC_PATH"/../minikube/out/* "$CIRCLE_ARTIFACTS"/
+
+deployment:
+    develop:
+        branch: 
+            - /(.+\/)?release-[0-9]+(\.[0-9]+)+(-palantir)?/
+            - master
+        owner: rubix
+        commands:
+            - docker login -e 'docker@palantir.com' -u "$ARTIFACTORY_USERNAME" -p "$ARTIFACTORY_PASSWORD" docker.palantir.build
+            - cd "$GO_PROJECT_SRC_PATH" && ./build/palantir/publish.sh
+
+    release:
+        tag: /v?[0-9]+(\.[0-9]+)+-palantir[0-9]+/
+        owner: rubix
+        commands:
+            - docker login -e 'docker@palantir.com' -u "$ARTIFACTORY_USERNAME" -p "$ARTIFACTORY_PASSWORD" docker.palantir.build
+            - cd "$GO_PROJECT_SRC_PATH" && ./build/palantir/publish.sh
+
+notify:
+  webhooks:
+    - url: https://parana.palantir.build/hook

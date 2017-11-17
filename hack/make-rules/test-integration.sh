@@ -27,7 +27,7 @@ source "${KUBE_ROOT}/hack/lib/init.sh"
 # KUBE_TEST_API_VERSIONS=${KUBE_TEST_API_VERSIONS:-"v1,extensions/v1beta1"}
 # FIXME: due to current implementation of a test client (see: pkg/api/testapi/testapi.go)
 # ONLY the last version is tested in each group.
-ALL_VERSIONS_CSV=$(IFS=',';echo "${KUBE_AVAILABLE_GROUP_VERSIONS[*]// /,}";IFS=$)
+ALL_VERSIONS_CSV=$(IFS=',';echo "${KUBE_AVAILABLE_GROUP_VERSIONS[*]// /,}";IFS=$),admissions.k8s.io/v1alpha1
 KUBE_TEST_API_VERSIONS="${KUBE_TEST_API_VERSIONS:-${ALL_VERSIONS_CSV}}"
 
 # Give integration tests longer to run
@@ -37,8 +37,6 @@ KUBE_TIMEOUT="-timeout 600s"
 KUBE_INTEGRATION_TEST_MAX_CONCURRENCY=${KUBE_INTEGRATION_TEST_MAX_CONCURRENCY:-"-1"}
 LOG_LEVEL=${LOG_LEVEL:-2}
 KUBE_TEST_ARGS=${KUBE_TEST_ARGS:-}
-# Default glog module settings.
-KUBE_TEST_VMODULE=${KUBE_TEST_VMODULE:-"garbagecollector*=6,graph_builder*=6"}
 
 kube::test::find_integration_test_dirs() {
   (
@@ -72,8 +70,8 @@ runTests() {
   KUBE_RACE="-race"
   make -C "${KUBE_ROOT}" test \
       WHAT="${WHAT:-$(kube::test::find_integration_test_dirs | paste -sd' ' -)}" \
-      GOFLAGS="${GOFLAGS:-}" \
-      KUBE_TEST_ARGS="${KUBE_TEST_ARGS:-} ${SHORT:--short=true} --vmodule=${KUBE_TEST_VMODULE} --alsologtostderr=true" \
+      KUBE_GOFLAGS="${KUBE_GOFLAGS:-}" \
+      KUBE_TEST_ARGS="${KUBE_TEST_ARGS:-} ${SHORT:--short=true} --vmodule=garbage*collector*=6 --alsologtostderr=true" \
       KUBE_RACE="" \
       KUBE_TIMEOUT="${KUBE_TIMEOUT}" \
       KUBE_TEST_API_VERSIONS="$1"
@@ -85,8 +83,7 @@ checkEtcdOnPath() {
   kube::log::status "Checking etcd is on PATH"
   which etcd && return
   kube::log::status "Cannot find etcd, cannot run integration tests."
-  kube::log::status "Please see https://github.com/kubernetes/community/blob/master/contributors/devel/testing.md#install-etcd-dependency for instructions."
-  kube::log::usage "You can use 'hack/install-etcd.sh' to install a copy in third_party/."
+  kube::log::status "Please see docs/devel/testing.md for instructions."
   return 1
 }
 

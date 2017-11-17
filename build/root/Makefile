@@ -46,15 +46,12 @@ GENERATED_FILE_PREFIX := zz_generated.
 # Metadata for driving the build lives here.
 META_DIR := .make
 
-ifdef KUBE_GOFLAGS
-$(info KUBE_GOFLAGS is now deprecated. Please use GOFLAGS instead.)
-ifndef GOFLAGS
-GOFLAGS := $(KUBE_GOFLAGS)
-unexport KUBE_GOFLAGS
-else
-$(error Both KUBE_GOFLAGS and GOFLAGS are set. Please use just GOFLAGS)
-endif
-endif
+# Our build flags.
+# TODO(thockin): it would be nice to just use the native flags.  Can we EOL
+#                these "wrapper" flags?
+KUBE_GOFLAGS := $(GOFLAGS)
+KUBE_GOLDFLAGS := $(GOLDFLAGS)
+KUBE_GOGCFLAGS = $(GOGCFLAGS)
 
 # Extra options for the release or quick-release options:
 KUBE_RELEASE_RUN_TESTS := $(KUBE_RELEASE_RUN_TESTS)
@@ -124,21 +121,7 @@ verify:
 else
 verify: verify_generated_files
 	KUBE_VERIFY_GIT_BRANCH=$(BRANCH) hack/make-rules/verify.sh -v
-endif
-
-define QUICK_VERIFY_HELP_INFO
-# Runs only the presubmission verifications that aren't slow.
-#
-# Example:
-#   make quick-verify
-endef
-.PHONY: quick-verify
-ifeq ($(PRINT_HELP),y)
-quick-verify:
-	@echo "$$QUICK_VERIFY_HELP_INFO"
-else
-quick-verify: verify_generated_files
-	hack/make-rules/verify.sh -v -Q
+	hack/make-rules/vet.sh
 endif
 
 define UPDATE_HELP_INFO
@@ -163,7 +146,6 @@ define CHECK_TEST_HELP_INFO
 #   WHAT: Directory names to test.  All *_test.go files under these
 #     directories will be run.  If not specified, "everything" will be tested.
 #   TESTS: Same as WHAT.
-#   KUBE_COVER: Whether to run tests with code coverage. Set to 'y' to enable coverage collection.
 #   GOFLAGS: Extra flags to pass to 'go' when building.
 #   GOLDFLAGS: Extra linking flags to pass to 'go' when building.
 #   GOGCFLAGS: Additional go compile flags passed to 'go' when building.
@@ -171,7 +153,7 @@ define CHECK_TEST_HELP_INFO
 # Example:
 #   make check
 #   make test
-#   make check WHAT=./pkg/kubelet GOFLAGS=-v
+#   make check WHAT=pkg/kubelet GOFLAGS=-v
 endef
 .PHONY: check test
 ifeq ($(PRINT_HELP),y)
@@ -251,21 +233,11 @@ define TEST_E2E_NODE_HELP_INFO
 #  PARALLELISM: The number of gingko nodes to run.  Defaults to 8.
 #  RUNTIME: Container runtime to use (eg. docker, rkt, remote).
 #    Defaults to "docker".
-#  CONTAINER_RUNTIME_ENDPOINT: remote container endpoint to connect to.
-#   Used when RUNTIME is set to "remote".
-#  IMAGE_SERVICE_ENDPOINT: remote image endpoint to connect to, to prepull images.
-#   Used when RUNTIME is set to "remote".
-#  IMAGE_CONFIG_FILE: path to a file containing image configuration.
-#  SYSTEM_SPEC_NAME: The name of the system spec to be used for validating the
-#    image in the node conformance test. The specs are located at
-#    test/e2e_node/system/specs/. For example, "SYSTEM_SPEC_NAME=gke" will use
-#    the spec at test/e2e_node/system/specs/gke.yaml. If unspecified, the
-#    default built-in spec (system.DefaultSpec) will be used.
 #
 # Example:
 #   make test-e2e-node FOCUS=Kubelet SKIP=container
 #   make test-e2e-node REMOTE=true DELETE_INSTANCES=true
-#   make test-e2e-node TEST_ARGS='--kubelet-flags="--cgroups-per-qos=true"'
+#   make test-e2e-node TEST_ARGS="--cgroups-per-qos=true"
 # Build and run tests.
 endef
 .PHONY: test-e2e-node
@@ -309,7 +281,8 @@ clean:
 else
 clean: clean_meta
 	build/make-clean.sh
-	git clean -Xdf
+	rm -rf $(OUT_DIR)
+	rm -rf Godeps/_workspace # Just until we are sure it is gone
 endif
 
 define CLEAN_META_HELP_INFO
@@ -353,41 +326,52 @@ define VET_HELP_INFO
 #
 # Example:
 #   make vet
-#   make vet WHAT=./pkg/kubelet
+#   make vet WHAT=pkg/kubelet
 endef
 .PHONY: vet
 ifeq ($(PRINT_HELP),y)
 vet:
 	@echo "$$VET_HELP_INFO"
 else
-vet: generated_files
-	CALLED_FROM_MAIN_MAKEFILE=1 hack/make-rules/vet.sh $(WHAT)
+vet:
+	hack/make-rules/vet.sh $(WHAT)
 endif
 
 define RELEASE_HELP_INFO
 # Build a release
-# Use the 'release-in-a-container' target to build the release when already in
-# a container vs. creating a new container to build in using the 'release'
-# target.  Useful for running in GCB.
 #
 # Example:
 #   make release
-#   make release-in-a-container
 endef
-.PHONY: release release-in-a-container
+.PHONY: release
 ifeq ($(PRINT_HELP),y)
-release release-in-a-container:
+release:
 	@echo "$$RELEASE_HELP_INFO"
 else
 release:
 	build/release.sh
-release-in-a-container:
-	build/release-in-a-container.sh
+endif
+
+define PALANTIR_BUILD_HELP_INFO
+# Run a Palantir release build. For details on differences between
+# the custom `make palantir-build` and original `make release` builds,
+# see comments in build/palantir/build.sh
+#
+# Example:
+#   make palantir-build
+endef
+.PHONY: palantir-build
+ifeq ($(PRINT_HELP),y)
+palantir-build:
+	@echo "$$PALANTIR_BUILD_HELP_INFO"
+else
+palantir-build:
+	build/palantir/build.sh
 endif
 
 define RELEASE_SKIP_TESTS_HELP_INFO
 # Build a release, but skip tests
-#
+# 
 # Args:
 #   KUBE_RELEASE_RUN_TESTS: Whether to run tests. Set to 'y' to run tests anyways.
 #   KUBE_FASTBUILD: Whether to cross-compile for other architectures. Set to 'true' to do so.
@@ -407,47 +391,19 @@ release-skip-tests quick-release:
 	build/release.sh
 endif
 
-define PACKAGE_HELP_INFO
-# Package tarballs
-# Use the 'package-tarballs' target to run the final packaging steps of
-# a release.
-#
-# Example:
-#   make package-tarballs
-endef
-.PHONY: package package-tarballs
-ifeq ($(PRINT_HELP),y)
-package package-tarballs:
-	@echo "$$PACKAGE_HELP_INFO"
-else
-package package-tarballs:
-	build/package-tarballs.sh
-endif
-
 define CROSS_HELP_INFO
 # Cross-compile for all platforms
-# Use the 'cross-in-a-container' target to cross build when already in
-# a container vs. creating a new container to build from (build-image)
-# Useful for running in GCB.
 #
 # Example:
 #   make cross
-#   make cross-in-a-container
 endef
-.PHONY: cross cross-in-a-container
+.PHONY: cross
 ifeq ($(PRINT_HELP),y)
-cross cross-in-a-container:
+cross:
 	@echo "$$CROSS_HELP_INFO"
 else
 cross:
 	hack/make-rules/cross.sh
-cross-in-a-container: KUBE_OUTPUT_SUBPATH = $(OUT_DIR)/dockerized
-cross-in-a-container:
-ifeq (,$(wildcard /.dockerenv))
-	@echo -e "\nThe 'cross-in-a-container' target can only be used from within a docker container.\n"
-else
-	hack/make-rules/cross.sh
-endif
 endif
 
 define CMD_HELP_INFO
@@ -457,7 +413,8 @@ define CMD_HELP_INFO
 #   make kubectl kube-proxy
 endef
 #TODO: make EXCLUDE_TARGET auto-generated when there are other files in cmd/
-EXCLUDE_TARGET=BUILD OWNERS
+#TODO: should we exclude the target "libs" but include "cmd/libs/go2idl/*"?
+EXCLUDE_TARGET=OWNERS
 .PHONY: $(filter-out %$(EXCLUDE_TARGET),$(notdir $(abspath $(wildcard cmd/*/))))
 ifeq ($(PRINT_HELP),y)
 $(filter-out %$(EXCLUDE_TARGET),$(notdir $(abspath $(wildcard cmd/*/)))):
@@ -556,7 +513,7 @@ bazel-build:
 	@echo "$$BAZEL_BUILD_HELP_INFO"
 else
 bazel-build:
-	bazel build //cmd/... //hack/... //pkg/... //federation/... //plugin/... //third_party/... //examples/... //test/... //vendor/k8s.io/...
+	bazel build //cmd/... //pkg/... //federation/... //plugin/... //third_party/... //examples/... //test/...
 endif
 
 
@@ -571,32 +528,18 @@ bazel-test:
 	@echo "$$BAZEL_TEST_HELP_INFO"
 else
 bazel-test:
-	bazel test --test_tag_filters=-integration --flaky_test_attempts=3 //cmd/... //pkg/... //federation/... //plugin/... //third_party/... //hack/... //hack:verify-all //vendor/k8s.io/...
+	bazel test --flaky_test_attempts=3 //cmd/... //pkg/... //federation/... //plugin/... //third_party/... //hack/... //hack:verify-all
 endif
 
 ifeq ($(PRINT_HELP),y)
-define BAZEL_TEST_INTEGRATION_HELP_INFO
-# Integration test with bazel
-#
-# Example:
-# make bazel-test-integration
-endef
-bazel-test-integration:
-	@echo "$$BAZEL_TEST_INTEGRATION_HELP_INFO"
-else
-bazel-test-integration:
-	bazel test //test/integration/...
-endif
-
-ifeq ($(PRINT_HELP),y)
-define BAZEL_RELEASE_HELP_INFO
+define BAZEL_BUILD_HELP_INFO
 # Build release tars with bazel
 #
 # Example:
 # make bazel-release
 endef
 bazel-release:
-	@echo "$$BAZEL_RELEASE_HELP_INFO"
+	@echo "$$BAZEL_BUILD_HELP_INFO"
 else
 bazel-release:
 	bazel build //build/release-tars

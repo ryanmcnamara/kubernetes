@@ -98,7 +98,7 @@ kube::test::find_dirs() {
   )
 }
 
-KUBE_TIMEOUT=${KUBE_TIMEOUT:--timeout 120s}
+KUBE_TIMEOUT=${KUBE_TIMEOUT:--timeout 300s}
 KUBE_COVER=${KUBE_COVER:-n} # set to 'y' to enable coverage collection
 KUBE_COVERMODE=${KUBE_COVERMODE:-atomic}
 # How many 'go test' instances to run simultaneously when running tests in
@@ -112,7 +112,7 @@ KUBE_GOVERALLS_BIN=${KUBE_GOVERALLS_BIN:-}
 # "v1,compute/v1alpha1,experimental/v1alpha2;v1,compute/v2,experimental/v1alpha3"
 # FIXME: due to current implementation of a test client (see: pkg/api/testapi/testapi.go)
 # ONLY the last version is tested in each group.
-ALL_VERSIONS_CSV=$(IFS=',';echo "${KUBE_AVAILABLE_GROUP_VERSIONS[*]// /,}";IFS=$),federation/v1beta1
+ALL_VERSIONS_CSV=$(IFS=',';echo "${KUBE_AVAILABLE_GROUP_VERSIONS[*]// /,}";IFS=$),federation/v1beta1,admissions.k8s.io/v1alpha1
 KUBE_TEST_API_VERSIONS="${KUBE_TEST_API_VERSIONS:-${ALL_VERSIONS_CSV}}"
 # once we have multiple group supports
 # Create a junit-style XML test report in this directory if set.
@@ -168,7 +168,7 @@ done
 shift $((OPTIND - 1))
 
 # Use eval to preserve embedded quoted strings.
-eval "goflags=(${GOFLAGS:-})"
+eval "goflags=(${KUBE_GOFLAGS:-})"
 eval "testargs=(${KUBE_TEST_ARGS:-})"
 
 # Used to filter verbose test output.
@@ -274,11 +274,11 @@ runTests() {
   # separate files.
 
   # ignore paths:
-  # vendor/k8s.io/code-generator/cmd/generator: is fragile when run under coverage, so ignore it for now.
+  # cmd/libs/go2idl/generator: is fragile when run under coverage, so ignore it for now.
   #                            https://github.com/kubernetes/kubernetes/issues/24967
   # vendor/k8s.io/client-go/1.4/rest: causes cover internal errors
   #                            https://github.com/golang/go/issues/16540
-  cover_ignore_dirs="vendor/k8s.io/code-generator/cmd/generator|vendor/k8s.io/client-go/1.4/rest"
+  cover_ignore_dirs="cmd/libs/go2idl/generator|vendor/k8s.io/client-go/1.4/rest"
   for path in $(echo $cover_ignore_dirs | sed 's/|/ /g'); do
       echo -e "skipped\tk8s.io/kubernetes/$path"
   done

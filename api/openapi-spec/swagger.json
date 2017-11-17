@@ -71691,6 +71691,16 @@
       "version": "v1beta1"
      },
      {
+      "group": "delegatedadmission.k8s.io",
+      "kind": "DeleteOptions",
+      "version": "__internal"
+     },
+     {
+      "group": "delegatedadmission.k8s.io",
+      "kind": "DeleteOptions",
+      "version": "v1alpha1"
+     },
+     {
       "group": "extensions",
       "kind": "DeleteOptions",
       "version": "v1beta1"
@@ -72203,6 +72213,11 @@
       "group": "certificates.k8s.io",
       "kind": "WatchEvent",
       "version": "v1beta1"
+     },
+     {
+      "group": "delegatedadmission.k8s.io",
+      "kind": "WatchEvent",
+      "version": "v1alpha1"
      },
      {
       "group": "extensions",

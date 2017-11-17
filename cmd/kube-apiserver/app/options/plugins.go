@@ -52,6 +52,7 @@ import (
 	"k8s.io/kubernetes/plugin/pkg/admission/serviceaccount"
 	"k8s.io/kubernetes/plugin/pkg/admission/storageclass/setdefault"
 	"k8s.io/kubernetes/plugin/pkg/admission/webhook"
+	"k8s.io/kubernetes/plugin/pkg/admission/webhook-palantir"
 )
 
 // RegisterAllAdmissionPlugins registers all admission plugins
@@ -82,5 +83,6 @@ func RegisterAllAdmissionPlugins(plugins *admission.Plugins) {
 	serviceaccount.Register(plugins)
 	setdefault.Register(plugins)
 	webhook.Register(plugins)
+	webhook_palantir.Register(plugins)
 	resize.Register(plugins)
 }

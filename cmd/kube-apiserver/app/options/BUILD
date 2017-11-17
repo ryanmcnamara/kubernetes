@@ -48,6 +48,7 @@ go_library(
         "//plugin/pkg/admission/serviceaccount:go_default_library",
         "//plugin/pkg/admission/storageclass/setdefault:go_default_library",
         "//plugin/pkg/admission/webhook:go_default_library",
+        "//plugin/pkg/admission/webhook-palantir:go_default_library",
         "//vendor/github.com/spf13/pflag:go_default_library",
         "//vendor/k8s.io/apimachinery/pkg/util/net:go_default_library",
         "//vendor/k8s.io/apiserver/pkg/admission:go_default_library",
