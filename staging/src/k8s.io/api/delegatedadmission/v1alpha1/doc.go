@@ -17,4 +17,4 @@ limitations under the License.
 // +k8s:deepcopy-gen=package,register
 // +groupName=delegatedadmission.k8s.io
 // +k8s:openapi-gen=true
-package v1alpha1 // import "k8s.io/api/delegatedadmission/v1"
+package v1alpha1 // import "k8s.io/api/delegatedadmission/v1alpha1"
