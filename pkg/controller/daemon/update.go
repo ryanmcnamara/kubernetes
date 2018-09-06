@@ -129,6 +129,7 @@ func (dsc *DaemonSetsController) constructHistory(ds *apps.DaemonSet) (cur *apps
 		if cur.Revision < currRevision {
 			toUpdate := cur.DeepCopy()
 			toUpdate.Revision = currRevision
+			glog.V(2).Infof("Updating revision number of controller revision %s, was %d, now %d", toUpdate.Name,cur.Revision,toUpdate.Revision)
 			_, err = dsc.kubeClient.AppsV1().ControllerRevisions(ds.Namespace).Update(toUpdate)
 			if err != nil {
 				return nil, nil, err
