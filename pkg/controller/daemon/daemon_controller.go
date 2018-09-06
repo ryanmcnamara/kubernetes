@@ -880,12 +880,14 @@ func (dsc *DaemonSetsController) podsShouldBeOnNode(
 		if len(daemonPodsRunning) > 1 {
 			sort.Sort(podByCreationTimestampAndPhase(daemonPodsRunning))
 			for i := 1; i < len(daemonPodsRunning); i++ {
+				glog.V(2).Infof("Found a daemon pod %s to delete because there was more than one pod running on node %s",daemonPods[i].Name,node.Name)
 				podsToDelete = append(podsToDelete, daemonPodsRunning[i].Name)
 			}
 		}
 	case !shouldContinueRunning && exists:
 		// If daemon pod isn't supposed to run on node, but it is, delete all daemon pods on node.
 		for _, pod := range daemonPods {
+			glog.V(2).Infof("Found a daemon pod %s to delete because it was running on node %s which doesn't want a ds pod",pod.Name,node.Name)
 			podsToDelete = append(podsToDelete, pod.Name)
 		}
 	}
