@@ -58,6 +58,7 @@ import (
 	"k8s.io/kubernetes/pkg/scheduler/algorithm/predicates"
 	schedulercache "k8s.io/kubernetes/pkg/scheduler/cache"
 	"k8s.io/kubernetes/pkg/util/metrics"
+	"k8s.io/kubernetes/staging/src/k8s.io/apimachinery/pkg/util/json"
 )
 
 const (
@@ -1166,6 +1167,7 @@ func (dsc *DaemonSetsController) updateDaemonSetStatus(ds *apps.DaemonSet, hash 
 }
 
 func (dsc *DaemonSetsController) syncDaemonSet(key string) error {
+	glog.V(4).Infof("Starting syncing daemon set %q", key)
 	startTime := time.Now()
 	defer func() {
 		glog.V(4).Infof("Finished syncing daemon set %q (%v)", key, time.Since(startTime))
@@ -1184,6 +1186,11 @@ func (dsc *DaemonSetsController) syncDaemonSet(key string) error {
 	if err != nil {
 		return fmt.Errorf("unable to retrieve ds %v from store: %v", key, err)
 	}
+	dsBytes, err := json.Marshal(ds)
+	if err != nil {
+		return fmt.Errorf("unable to marshal ds %v from store: %v", key, err)
+	}
+	glog.V(4).Infof("In daemonset sync: daemon set bytes: %s", dsBytes)
 
 	everything := metav1.LabelSelector{}
 	if reflect.DeepEqual(ds.Spec.Selector, &everything) {
