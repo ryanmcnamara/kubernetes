@@ -1186,11 +1186,13 @@ func (dsc *DaemonSetsController) syncDaemonSet(key string) error {
 	if err != nil {
 		return fmt.Errorf("unable to retrieve ds %v from store: %v", key, err)
 	}
-	dsBytes, err := json.Marshal(ds)
-	if err != nil {
-		return fmt.Errorf("unable to marshal ds %v from store: %v", key, err)
+	{
+		dsBytes, err := json.Marshal(ds)
+		if err != nil {
+			return fmt.Errorf("unable to marshal ds %v from store: %v", key, err)
+		}
+		glog.V(4).Infof("In daemonset sync: daemon set bytes 1: %s", dsBytes)
 	}
-	glog.V(4).Infof("In daemonset sync: daemon set bytes: %s", dsBytes)
 
 	everything := metav1.LabelSelector{}
 	if reflect.DeepEqual(ds.Spec.Selector, &everything) {
@@ -1204,6 +1206,14 @@ func (dsc *DaemonSetsController) syncDaemonSet(key string) error {
 	dsKey, err := controller.KeyFunc(ds)
 	if err != nil {
 		return fmt.Errorf("couldn't get key for object %#v: %v", ds, err)
+	}
+
+	{
+		dsBytes, err := json.Marshal(ds)
+		if err != nil {
+			return fmt.Errorf("unable to marshal ds %v from store: %v", key, err)
+		}
+		glog.V(4).Infof("In daemonset sync: daemon set bytes 2: %s", dsBytes)
 	}
 
 	// If the DaemonSet is being deleted (either by foreground deletion or

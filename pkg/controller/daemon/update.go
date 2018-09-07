@@ -88,6 +88,15 @@ func (dsc *DaemonSetsController) constructHistory(ds *apps.DaemonSet) (cur *apps
 	if err != nil {
 		return nil, nil, err
 	}
+
+	{
+		dsBytes, err := json.Marshal(ds)
+		if err != nil {
+			return nil,nil,fmt.Errorf("unable to marshal ds %v from store: %v", ds.Name, err)
+		}
+		glog.V(4).Infof("In daemonset sync: daemon set bytes 3: %s", dsBytes)
+	}
+
 	for _, history := range histories {
 		// Add the unique label if it's not already added to the history
 		// We use history name instead of computing hash, so that we don't need to worry about hash collision
@@ -101,7 +110,15 @@ func (dsc *DaemonSetsController) constructHistory(ds *apps.DaemonSet) (cur *apps
 		}
 		// Compare histories with ds to separate cur and old history
 		found := false
+
 		found, err = Match(ds, history)
+		{
+			dsBytes, err := json.Marshal(ds)
+			if err != nil {
+				return nil,nil,fmt.Errorf("unable to marshal ds %v from store: %v", ds.Name, err)
+			}
+			glog.V(4).Infof("In daemonset sync controllerrevision %s: daemon set bytes 4: %s",history.Name, dsBytes)
+		}
 		if err != nil {
 			return nil, nil, err
 		}
@@ -280,6 +297,7 @@ func (dsc *DaemonSetsController) controlledHistories(ds *apps.DaemonSet) ([]*app
 
 type logStruct struct {
 	Match bool
+	DSBytes string
 	PatchString string
 	RawString string
 	HistoryBytes string
@@ -296,8 +314,13 @@ func Match(ds *apps.DaemonSet, history *apps.ControllerRevision) (bool, error) {
 	if err != nil {
 		return false,err
 	}
+	dsBytes,err:=json.Marshal(ds)
+	if err != nil {
+		return false,err
+	}
 	logs:=logStruct{
 		Match: bytes.Equal(patch, history.Data.Raw),
+		DSBytes: string(dsBytes),
 		PatchString: string(patch),
 		RawString: string(history.Data.Raw),
 		HistoryBytes:string(historyBytes),
