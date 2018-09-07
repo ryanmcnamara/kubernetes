@@ -106,8 +106,10 @@ func (dsc *DaemonSetsController) constructHistory(ds *apps.DaemonSet) (cur *apps
 			return nil, nil, err
 		}
 		if found {
+			glog.V(2).Infof("Found current history, controllerrevision name: %s, revision number %d", history.Name,history.Revision)
 			currentHistories = append(currentHistories, history)
 		} else {
+			glog.V(2).Infof("Found old history, controllerrevision name: %s, revision number %d", history.Name,history.Revision)
 			old = append(old, history)
 		}
 	}
@@ -276,12 +278,36 @@ func (dsc *DaemonSetsController) controlledHistories(ds *apps.DaemonSet) ([]*app
 	return cm.ClaimControllerRevisions(histories)
 }
 
+type logStruct struct {
+	Match bool
+	PatchString string
+	RawString string
+	HistoryBytes string
+}
+
 // Match check if the given DaemonSet's template matches the template stored in the given history.
 func Match(ds *apps.DaemonSet, history *apps.ControllerRevision) (bool, error) {
 	patch, err := getPatch(ds)
 	if err != nil {
 		return false, err
 	}
+
+	historyBytes,err:=json.Marshal(history)
+	if err != nil {
+		return false,err
+	}
+	logs:=logStruct{
+		Match: bytes.Equal(patch, history.Data.Raw),
+		PatchString: string(patch),
+		RawString: string(history.Data.Raw),
+		HistoryBytes:string(historyBytes),
+	}
+	logsBytes,err:=json.Marshal(logs)
+	if err != nil {
+		return false,err
+	}
+
+	glog.V(2).Infof("Checking match for controllerrevision %s, logstruct: %s", history.Name,string(logsBytes))
 	return bytes.Equal(patch, history.Data.Raw), nil
 }
 
