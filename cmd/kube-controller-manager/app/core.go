@@ -341,7 +341,7 @@ func startServiceAccountController(ctx ControllerContext) (http.Handler, bool, e
 	if err != nil {
 		return nil, true, fmt.Errorf("error creating ServiceAccount controller: %v", err)
 	}
-	go sac.Run(1, ctx.Stop)
+	go sac.Run(5, ctx.Stop)
 	return nil, true, nil
 }
 

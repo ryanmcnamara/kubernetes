@@ -167,6 +167,7 @@ func (r *Reflector) resyncChan() (<-chan time.Time, func() bool) {
 // It returns error if ListAndWatch didn't even try to initialize watch.
 func (r *Reflector) ListAndWatch(stopCh <-chan struct{}) error {
 	glog.V(3).Infof("Listing and watching %v from %s", r.expectedType, r.name)
+	glog.V(3).Infof("Palantir fork: Listing and watching %v from %s", r.expectedType, r.name)
 	var resourceVersion string
 
 	// Explicitly set "0" as resource version - it's fine for the List()
@@ -313,6 +314,11 @@ loop:
 			}
 			if e, a := r.expectedType, reflect.TypeOf(event.Object); e != nil && e != a {
 				utilruntime.HandleError(fmt.Errorf("%s: expected type %v, but watch event object had type %v", r.name, e, a))
+				glog.V(3).Infof("Palantir fork: name: %s: expected type %v, but watch event object had type %v, event type %v", r.name, e, a, event.Type)
+				glog.V(3).Infof("Palantir fork: name: %s: expected type %v, but watch event object had type %v, modification rev %v", r.name, e, a, event.Rev)
+				glog.V(3).Infof("Palantir fork: name: %s: expected type %v, but watch event object had type %v, key %v", r.name, e, a, event.Key)
+				glog.V(3).Infof("Palantir fork: name: %s: expected type %v, but watch event object had type %v, event object %#v", r.name, e, a, event)
+
 				continue
 			}
 			meta, err := meta.Accessor(event.Object)

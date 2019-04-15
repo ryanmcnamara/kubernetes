@@ -279,6 +279,7 @@ func (wc *watchChan) transform(e *event) (res *watch.Event) {
 			Type:   watch.Deleted,
 			Object: oldObj,
 		}
+		res.ReturnLocation=1
 	case e.isCreated:
 		if !wc.filter(curObj) {
 			return nil
@@ -293,7 +294,7 @@ func (wc *watchChan) transform(e *event) (res *watch.Event) {
 				Type:   watch.Modified,
 				Object: curObj,
 			}
-			return res
+			break
 		}
 		curObjPasses := wc.filter(curObj)
 		oldObjPasses := wc.filter(oldObj)
@@ -313,8 +314,15 @@ func (wc *watchChan) transform(e *event) (res *watch.Event) {
 				Type:   watch.Deleted,
 				Object: oldObj,
 			}
+			res.ReturnLocation=2
 		}
 	}
+	res.IsCreated=e.isCreated
+	res.IsDeleted=e.isDeleted
+	res.Rev=e.rev
+	res.Value=e.value
+	res.Key=e.key
+	res.PrevValue=e.prevValue
 	return res
 }
 

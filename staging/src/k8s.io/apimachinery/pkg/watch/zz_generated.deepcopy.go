@@ -26,6 +26,16 @@ func (in *Event) DeepCopyInto(out *Event) {
 	if in.Object != nil {
 		out.Object = in.Object.DeepCopyObject()
 	}
+	if in.Value != nil {
+		in, out := &in.Value, &out.Value
+		*out = make([]byte, len(*in))
+		copy(*out, *in)
+	}
+	if in.PrevValue != nil {
+		in, out := &in.PrevValue, &out.PrevValue
+		*out = make([]byte, len(*in))
+		copy(*out, *in)
+	}
 	return
 }
 

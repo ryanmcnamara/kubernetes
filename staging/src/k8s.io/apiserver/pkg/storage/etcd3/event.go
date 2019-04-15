@@ -26,8 +26,8 @@ type event struct {
 	value     []byte
 	prevValue []byte
 	rev       int64
-	isDeleted bool
-	isCreated bool
+	isDeleted     bool
+	isCreated     bool
 }
 
 // parseKV converts a KeyValue retrieved from an initial sync() listing to a synthetic isCreated event.
@@ -44,11 +44,11 @@ func parseKV(kv *mvccpb.KeyValue) *event {
 
 func parseEvent(e *clientv3.Event) *event {
 	ret := &event{
-		key:       string(e.Kv.Key),
-		value:     e.Kv.Value,
-		rev:       e.Kv.ModRevision,
-		isDeleted: e.Type == clientv3.EventTypeDelete,
-		isCreated: e.IsCreate(),
+		key:           string(e.Kv.Key),
+		value:         e.Kv.Value,
+		rev:           e.Kv.ModRevision,
+		isDeleted:     e.Type == clientv3.EventTypeDelete,
+		isCreated:     e.IsCreate(),
 	}
 	if e.PrevKv != nil {
 		ret.prevValue = e.PrevKv.Value
