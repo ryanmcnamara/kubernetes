@@ -17,6 +17,7 @@ limitations under the License.
 package etcd3
 
 import (
+	"fmt"
 	"github.com/coreos/etcd/clientv3"
 	"github.com/coreos/etcd/mvcc/mvccpb"
 )
@@ -42,7 +43,7 @@ func parseKV(kv *mvccpb.KeyValue) *event {
 	}
 }
 
-func parseEvent(e *clientv3.Event) *event {
+func parseEvent(e *clientv3.Event) (*event, error) {
 	ret := &event{
 		key:       string(e.Kv.Key),
 		value:     e.Kv.Value,
@@ -53,5 +54,9 @@ func parseEvent(e *clientv3.Event) *event {
 	if e.PrevKv != nil {
 		ret.prevValue = e.PrevKv.Value
 	}
-	return ret
+	if ret.isDeleted && ret.prevValue == nil {
+		// If the previous value is nil, error. One example of how this is possible is if the previous value has been compacted already.
+		return nil, fmt.Errorf("etcd delete event has nil prevKV, key: %s, modRevision: %d", ret.key, ret.rev)
+	}
+	return ret, nil
 }
